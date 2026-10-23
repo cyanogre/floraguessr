@@ -8,7 +8,7 @@ import { RADIUS_KM } from '../config';
 import type { Place } from '../game/types';
 import { PIN_SVG } from './icons';
 
-const ESRI_ATTR = 'Imágenes © Esri, Vantor, Earthstar Geographics y la comunidad de usuarios GIS';
+const ESRI_ATTR = 'Imágenes: Esri, Vantor, Earthstar Geographics y la comunidad de usuarios GIS';
 
 /**
  * Con clave de ArcGIS Location Platform usamos el servicio de teselas estáticas, que es el que cubren
@@ -26,6 +26,7 @@ export class FieldMap {
   private layer = L.layerGroup();
   private sat: L.TileLayer | null = null;
   private satOn = false;
+  private settle: ReturnType<typeof setTimeout> | null = null;
 
   constructor(el: HTMLElement, opts: { satellite: boolean }) {
     const css = getComputedStyle(document.documentElement);
@@ -40,20 +41,22 @@ export class FieldMap {
       attributionControl: true,
     }).setView([25, 5], 2);
     L.control.zoom({ position: 'bottomright', zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(this.map);
-    this.map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
-    this.map.attributionControl.addAttribution('Costas: Natural Earth · Datos: iNaturalist, GBIF · Rareza: Wikipedia');
+    // Sobre el mapa solo va lo que exige el proveedor del satélite; el resto se cita en la ficha y en
+    // «Fuentes y créditos» (Leaflet no pide crédito visible; Natural Earth es de dominio público).
+    this.map.attributionControl.setPrefix(false);
+    this.map.attributionControl.setPosition('bottomleft');
 
-    // Tierra y retícula en un panel propio por debajo de las capas de la ronda.
-    this.map.createPane('paper').style.zIndex = '250';
+    // Tierra y retícula en un panel propio, por debajo de las teselas de satélite (200) y de la ronda.
+    this.map.createPane('paper').style.zIndex = '150';
     const renderer = L.canvas({ pane: 'paper' });
     const style = { color: ink, weight: 0.8, opacity: 0.85, fillColor: land, fillOpacity: 1 };
     const topo = land110 as unknown as Topology;
-    const coarse = L.geoJSON(feature(topo, topo.objects.land), { interactive: false, style, pane: 'paper', renderer } as L.GeoJSONOptions).addTo(this.map);
+    const coarse = L.geoJSON(feature(topo, topo.objects.land), { interactive: false, style, pane: 'paper', renderer, noClip: true } as L.GeoJSONOptions).addTo(this.map);
     // Costa más detallada (1:50 millones) en segundo plano: a la escala del círculo se nota.
     fetch(land50Url)
       .then((r) => (r.ok ? (r.json() as Promise<Topology>) : Promise.reject(new Error(String(r.status)))))
       .then((t50) => {
-        L.geoJSON(feature(t50, t50.objects.land), { interactive: false, style, pane: 'paper', renderer } as L.GeoJSONOptions).addTo(this.map);
+        L.geoJSON(feature(t50, t50.objects.land), { interactive: false, style, pane: 'paper', renderer, noClip: true } as L.GeoJSONOptions).addTo(this.map);
         coarse.remove();
       })
       .catch(() => undefined);
@@ -107,13 +110,20 @@ export class FieldMap {
       title: 'Punto de la ronda',
     }).addTo(this.layer);
     this.map.invalidateSize();
-    this.map.flyToBounds(circle.getBounds(), {
-      paddingTopLeft: [24, pad.top],
-      paddingBottomRight: [24, pad.bottom],
-      animate,
-      duration: animate ? 1.2 : 0,
-      maxZoom: 7,
-    });
+    const bounds = circle.getBounds();
+    const fit = { paddingTopLeft: L.point(24, pad.top), paddingBottomRight: L.point(24, pad.bottom), maxZoom: 7 };
+    // Centro y zoom que dejan el círculo entre la cabecera y la mano (API interna estable de Leaflet 1.9).
+    const target = (this.map as unknown as { _getBoundsCenterZoom(b: L.LatLngBounds, o: object): { center: L.LatLng; zoom: number } })._getBoundsCenterZoom(bounds, fit);
+    const zoom = Math.max(4, Math.min(7, target.zoom));
+    if (this.settle) clearTimeout(this.settle);
+    if (animate) this.map.flyTo(target.center, zoom, { duration: 1.2 });
+    else this.map.setView(target.center, zoom, { animate: false });
+    // Si la animación se queda a medias (pestaña en segundo plano, gesto del jugador…), se coloca sin animar.
+    this.settle = setTimeout(() => {
+      if (Math.abs(this.map.getZoom() - zoom) > 0.5 || !this.map.getBounds().contains(target.center)) {
+        this.map.setView(target.center, zoom, { animate: false });
+      }
+    }, animate ? 1800 : 0);
   }
 
   showRecords(points: [number, number][]): void {

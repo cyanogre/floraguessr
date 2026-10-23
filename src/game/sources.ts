@@ -22,10 +22,9 @@ const MAX_TRIES = 8;
 /** Completa las cartas con nombre local, foto con licencia y visitas a Wikipedia. */
 async function enrich(cards: Species[], locale: string, signal: AbortSignal): Promise<Species[]> {
   const details = await inat.taxaDetails(cards.map((c) => c.taxonId), locale, signal).catch(() => new Map<number, Species>());
-  return Promise.all(
-    cards.map(async (c) => {
+  const merged = cards.map((c) => {
       const d = details.get(c.taxonId);
-      const merged: Species = d
+      const m: Species = d
         ? {
             ...c,
             ...d,
@@ -37,10 +36,14 @@ async function enrich(cards: Species[], locale: string, signal: AbortSignal): Pr
             photo: d.photo ?? c.photo,
           }
         : c;
-      if (merged.views == null && merged.wikiTitle) merged.views = await wiki.annualViews(merged.wikiTitle, signal).catch(() => null);
-      return merged;
-    }),
-  );
+      return m;
+  });
+  const titles = merged.filter((m) => m.views == null && m.wikiTitle).map((m) => m.wikiTitle!);
+  if (titles.length) {
+    const views = await wiki.annualViewsBatch(titles, signal).catch(() => new Map<string, number | null>());
+    for (const m of merged) if (m.views == null && m.wikiTitle) m.views = views.get(m.wikiTitle) ?? null;
+  }
+  return merged;
 }
 
 /** Pruebas de iNaturalist (recuentos y nativas) y GBIF (una consulta) para un lugar y unas cartas. */

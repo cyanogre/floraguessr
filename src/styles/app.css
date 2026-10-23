@@ -204,7 +204,7 @@ img { max-width: 100%; }
 .hand {
   position: absolute; z-index: 20; left: 0; right: 0;
   bottom: 0;
-  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   pointer-events: none;
 }
 .hand-cards {
@@ -411,14 +411,19 @@ dialog::backdrop { background: rgb(29 37 32 / 0.55); }
 
 /* ---------- Mapa ---------- */
 .leaflet-container { font: var(--t-xs) var(--f-label); background: var(--sea); }
-.leaflet-control-attribution.leaflet-control {
-  background: var(--sheet); color: var(--ink-2); padding: 2px 6px; font-size: 10px; max-width: calc(100vw - 80px);
-}
 .leaflet-container .leaflet-control-attribution a { color: var(--blue); }
 .leaflet-bar { border: 1px solid var(--ink) !important; border-radius: 2px !important; box-shadow: none !important; }
 .leaflet-bar a { background: var(--sheet) !important; color: var(--ink) !important; border-color: var(--rule) !important; width: 36px !important; height: 36px !important; line-height: 34px !important; }
 .map-pin { background: none; border: 0; }
-#app[data-phase="choosing"] .leaflet-bottom, #app[data-phase="revealed"] .leaflet-bottom { bottom: var(--hand-h, 0px); }
+#app[data-phase="choosing"] .leaflet-bottom.leaflet-right, #app[data-phase="revealed"] .leaflet-bottom.leaflet-right { bottom: var(--hand-h, 0px); }
+/* Crédito del satélite: una línea discreta pegada al borde, por debajo de las fichas. */
+.leaflet-bottom.leaflet-left { bottom: env(safe-area-inset-bottom, 0px); left: env(safe-area-inset-left, 0px); }
+.leaflet-container .leaflet-control-attribution.leaflet-control {
+  margin: 0; padding: 1px 6px; font-size: 9px; line-height: 14px;
+  background: rgb(247 245 238 / 0.85); color: var(--ink-2);
+  max-width: calc(100vw - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.leaflet-control-attribution:empty { display: none; }
 #app[data-phase="choosing"] { --hand-h: 280px; }
 #app[data-phase="revealed"] { --hand-h: 280px; }
 #app:has(.sheetbar:not([hidden])) { --hand-h: 80px; }
@@ -471,3 +476,12 @@ dialog::backdrop { background: rgb(29 37 32 / 0.55); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---------- Diagnóstico (página oculta) ---------- */
+.diag { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; padding-block: 24px; padding-left: var(--gutter); padding-right: var(--gutter-r); }
+.diag h1 { font-size: var(--t-3xl); }
+.diag table { width: 100%; border-collapse: collapse; font-size: var(--t-sm); background: var(--sheet); }
+.diag th, .diag td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; overflow-wrap: anywhere; }
+.diag tr.is-ok td:nth-child(2) { color: var(--moss); font-weight: 700; }
+.diag tr.is-miss td:nth-child(2) { color: var(--red); font-weight: 700; }
+.diag textarea { width: 100%; font: var(--t-xs) var(--f-label); }

@@ -16,8 +16,9 @@ test('Mundial: ronda con APIs simuladas, atribución de foto y cabecera de Wikim
   await expect(page.locator('.specimen-mount figcaption')).toContainText('(c) Ana Botánica');
   await expect(page.locator('.specimen-mount figcaption')).toContainText('CC BY');
   await expect(page.locator('[data-extract]')).toContainText('Helecho de sotobosque');
-  await expect(page.locator('.leaflet-control-attribution')).toContainText('iNaturalist');
   await expect(page.locator('.leaflet-control-attribution')).toContainText('Esri');
+  // Las visitas llegan: hay fichas con rareza distinta de «Común».
+  await expect(page.locator('.sheet-facts')).toContainText('al año');
 
   const wm = log.wikimedia.filter((w) => !w.url.includes('OPTIONS'));
   expect(wm.length).toBeGreaterThan(0);
