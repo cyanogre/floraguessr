@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generador de especies · FloraGuessr</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ac:#7be0a4;--bd:rgba(255,255,255,.18);--fg:#f2f6f3}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;justify-content:center;padding:22px;color:var(--fg);font:14px Inter,system-ui,sans-serif;background:radial-gradient(circle at 25% 10%,#1f4d33,#0b140f 65%)}
+main{width:min(860px,100%);background:rgba(14,26,20,.65);backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:20px;padding:26px;box-shadow:0 10px 40px #000a}
+h1{font:600 34px Fraunces,Georgia,serif;margin:0 0 4px;color:var(--ac)}p{color:#cfe0d5;line-height:1.5;margin:6px 0 16px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+button,select{font:600 13px Inter;cursor:pointer;border:1px solid var(--bd);background:#ffffff14;color:var(--fg);border-radius:10px;padding:7px 13px}select option{color:#000}
+button.p{background:var(--ac);color:#08210f;border-color:var(--ac)}button:disabled{opacity:.4;cursor:default}
+input[type=range]{accent-color:var(--ac);flex:1;min-width:160px}
+#grp{display:flex;flex-wrap:wrap;gap:6px}#grp label{padding:4px 10px;border:1px solid var(--bd);border-radius:14px;cursor:pointer;font-size:12px;user-select:none}
+#grp label:has(input:checked){background:#7be0a433;border-color:var(--ac)}#grp input{display:none}
+.bar{height:8px;border-radius:5px;background:#ffffff18;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3fd17f,#b967ff,#ffb72b);transition:width .3s}
+pre{background:#0008;border-radius:12px;padding:10px;height:150px;overflow:auto;font-size:12px;color:#bfe;margin:10px 0}
+.t{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px}.t span{width:90px}.t em{height:14px;border-radius:4px;display:block}
+small{color:#9bb}
+</style></head><body><main>
+<h1>Generador de especies</h1>
+<p>Consulta iNaturalist (taxones, fotos, nombre común, IUCN) y Wikipedia (visitas del último año) y construye <b>especies.js</b>. Déjalo en la misma carpeta que <b>floraguessr_v2.html</b> y el juego activará el «Modo mundo». Solo entran especies con artículo en Wikipedia y foto.</p>
+<div class="row"><label>Especies por grupo: <b id="nv">40</b></label><input type="range" id="n" min="10" max="150" value="40">
+<select id="md"><option value="rnd">Muestreo aleatorio (más variedad y rareza)</option><option value="top">Las más observadas (cartas más famosas)</option></select></div>
+<div id="grp"></div>
+<div class="row"><button id="all">Todos</button><button id="none">Ninguno</button><button class="p" id="run">Generar especies.js</button><small id="st"></small></div>
+<div class="bar"><i id="pb"></i></div><pre id="log"></pre>
+<div id="res" hidden><div class="row"><button class="p" id="dl">⬇ Descargar especies.js</button><button id="cp">Copiar contenido</button><small id="sz"></small></div>
+<h3 style="font:600 18px Fraunces,Georgia,serif;margin:14px 0 4px">Reparto por rareza</h3><div id="dist"></div><small id="ex"></small></div>
+</main>
+<script>
+const IN="https://api.inaturalist.org/v1/",$=s=>document.querySelector(s),enc=encodeURIComponent,sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const TIERS=[[300000,"Común","#9aa7b4"],[100000,"Poco común","#3fd17f"],[40000,"Rara","#4b9bff"],[15000,"Épica","#b967ff"],[0,"Legendaria","#ffb72b"]]; // iguales que en el juego
+const GROUPS=[["Coníferas","Pinopsida"],["Cícadas","Cycadopsida"],["Gnetófitos","Gnetopsida"],["Ginkgo","Ginkgoopsida"],["Helechos","Polypodiopsida"],["Licófitos","Lycopodiopsida"],["Musgos","Bryophyta"],["Hepáticas","Marchantiophyta"],
+["Orquídeas","Orchidaceae"],["Gramíneas","Poaceae"],["Palmeras","Arecaceae"],["Cactus","Cactaceae"],["Crasuláceas","Crassulaceae"],["Leguminosas","Fabaceae"],["Asteráceas","Asteraceae"],["Rosáceas","Rosaceae"],["Labiadas","Lamiaceae"],
+["Fagales","Fagales"],["Ericáceas","Ericaceae"],["Proteáceas","Proteaceae"],["Mirtáceas","Myrtaceae"],["Droseráceas","Droseraceae"],["Sarraceniáceas","Sarraceniaceae"],["Nepentáceas","Nepenthaceae"],["Ninfeáceas","Nymphaeaceae"],
+["Amarilidáceas","Amaryllidaceae"],["Lauráceas","Lauraceae"],["Dipterocarpáceas","Dipterocarpaceae"],["Ranunculáceas","Ranunculaceae"],["Crucíferas","Brassicaceae"],["Cucurbitáceas","Cucurbitaceae"],["Euforbiáceas","Euphorbiaceae"],["Aráceas","Araceae"],["Bromeliáceas","Bromeliaceae"],["Malváceas","Malvaceae"]];
+$("#grp").innerHTML=GROUPS.map((g,i)=>`<label><input type="checkbox" value="${i}" checked>${g[0]}</label>`).join("");
+$("#n").oninput=()=>$("#nv").textContent=$("#n").value;
+$("#all").onclick=()=>document.querySelectorAll("#grp input").forEach(x=>x.checked=true);
+$("#none").onclick=()=>document.querySelectorAll("#grp input").forEach(x=>x.checked=false);
+const j=async u=>{for(let t=0;t<3;t++){const r=await fetch(u);if(r.ok)return r.json();if(r.status===429||r.status>=500)await sleep(2500*(t+1));else throw new Error(r.status)}throw new Error("reintentos agotados")};
+const log=t=>{const l=$("#log");l.textContent+=t+"\n";l.scrollTop=1e9};
+const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const k=Math.random()*(i+1)|0;[a[i],a[k]]=[a[k],a[i]]}return a};
+const pool=async(a,n,f)=>{let i=0;await Promise.all(Array.from({length:n},async()=>{while(i<a.length)await f(a[i++])}))};
+let OUT="";
+$("#run").onclick=async()=>{
+ const N=+$("#n").value,rnd=$("#md").value==="rnd",sel=[...document.querySelectorAll("#grp input:checked")].map(x=>GROUPS[x.value]);
+ if(!sel.length)return;$("#run").disabled=true;$("#res").hidden=true;$("#log").textContent="";$("#pb").style.width="0";
+ const d=new Date(),f=n=>String(n).padStart(2,"0"),a=`${d.getFullYear()-1}${f(d.getMonth()+1)}0100`,b=`${d.getFullYear()}${f(d.getMonth()+1)}0100`;
+ const seen=new Set(),cand=[];
+ for(const [lab,name] of sel){
+  $("#st").textContent="Taxones: "+lab;
+  try{const r0=await j(`${IN}taxa?q=${enc(name)}&per_page=10`);await sleep(700);
+   const tx=r0.results.find(t=>t.name===name)||r0.results[0];if(!tx){log("✘ "+lab+": no encontrado");continue}
+   let pool_=[];const pages=rnd?5:2;
+   for(let p=1;p<=pages;p++){const r=await j(`${IN}taxa?taxon_id=${tx.id}&rank=species&is_active=true&per_page=200&page=${p}&locale=es`);await sleep(700);
+    pool_.push(...r.results.filter(x=>x.wikipedia_url&&x.default_photo&&!seen.has(x.name)));if(r.results.length<200)break}
+   pool_.sort((x,y)=>y.observations_count-x.observations_count);
+   const pick=(rnd?sh(pool_):pool_).slice(0,Math.ceil(N*1.3));pick.forEach(x=>{seen.add(x.name);cand.push({lab,x})});
+   log(`✔ ${lab}: ${pick.length} candidatas (de ${pool_.length})`);
+  }catch(e){log("✘ "+lab+": "+e.message)}
+ }
+ log(`Consultando Wikipedia para ${cand.length} especies…`);let done=0;const rows=[];
+ await pool(cand,8,async({lab,x})=>{
+  try{const t0=decodeURIComponent(x.wikipedia_url.split("/wiki/")[1]||"").split("#")[0];if(!t0)throw 0;
+   const s=await j("https://en.wikipedia.org/api/rest_v1/page/summary/"+enc(t0));const w=(s.titles&&s.titles.canonical)||t0;
+   const v=(await j(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${enc(w)}/monthly/${a}/${b}`)).items.reduce((q,i)=>q+i.views,0);
+   rows.push([x.name,lab,{t:x.id,n:x.preferred_common_name||"",i:x.default_photo.medium_url,o:x.observations_count,c:x.conservation_status?String(x.conservation_status.status).toUpperCase():"",v,w}]);
+  }catch(e){}
+  $("#pb").style.width=(++done/cand.length*100)+"%";$("#st").textContent=`${done}/${cand.length}`});
+ // recorte final: N por grupo
+ const by={};rows.forEach(r=>(by[r[1]]=by[r[1]]||[]).push(r));
+ const fin=Object.values(by).flatMap(g=>(rnd?sh(g):g.sort((p,q)=>q[2].o-p[2].o)).slice(0,N));
+ OUT=`/* FloraGuessr · base de especies generada ${d.toISOString().slice(0,10)} · ${fin.length} especies */\nwindow.SPECIES_DB=${JSON.stringify(fin)};\n`;
+ log(`Listo: ${fin.length} especies, ${(OUT.length/1024).toFixed(0)} KB.`);
+ const cnt=TIERS.map(t=>0);fin.forEach(r=>cnt[TIERS.findIndex(t=>r[2].v>=t[0])]++);const mx=Math.max(...cnt,1);
+ $("#dist").innerHTML=TIERS.map((t,i)=>`<div class="t"><span>${t[1]}</span><em style="width:${cnt[i]/mx*60}%;background:${t[2]}"></em>${cnt[i]} (${(cnt[i]/fin.length*100|0)}%)</div>`).join("");
+ const s2=[...fin].sort((p,q)=>p[2].v-q[2].v);
+ $("#ex").textContent="Menos visitadas: "+s2.slice(0,4).map(r=>r[0]).join(", ")+" · Más visitadas: "+s2.slice(-4).map(r=>r[0]).join(", ");
+ $("#sz").textContent=`${fin.length} especies · ${(OUT.length/1024).toFixed(0)} KB`;$("#res").hidden=false;$("#run").disabled=false;$("#st").textContent="";
+};
+$("#dl").onclick=()=>{const l=document.createElement("a");l.href=URL.createObjectURL(new Blob([OUT],{type:"text/javascript"}));l.download="especies.js";l.click()};
+$("#cp").onclick=()=>navigator.clipboard.writeText(OUT).then(()=>$("#cp").textContent="Copiado ✔");
+</script></body></html>
