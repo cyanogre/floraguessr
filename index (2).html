@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FloraGuessr</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--g:rgba(14,26,20,.62);--bd:rgba(255,255,255,.18);--ac:#7be0a4;--fg:#f2f6f3}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#0b140f;color:var(--fg);font:14px Inter,system-ui,sans-serif}
+#map{position:fixed;inset:0;background:#0b140f}.leaflet-container{background:#0b140f}
+#map::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:450;background:radial-gradient(ellipse at center,transparent 55%,#000a 100%)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:460}
+.gl{background:var(--g);backdrop-filter:blur(14px) saturate(1.4);border:1px solid var(--bd);border-radius:16px;box-shadow:0 8px 30px #0008}
+#hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:600;display:flex;gap:10px;align-items:center;padding:6px 8px 6px 16px;flex-wrap:wrap;justify-content:center;max-width:96vw}
+#hud h1{font:600 18px Fraunces,Georgia,serif;margin:0;color:var(--ac)}.pips{display:flex;gap:4px}.pip{width:9px;height:9px;border-radius:50%;background:#fff3}.pip.on{background:var(--ac);box-shadow:0 0 8px var(--ac)}
+button{font:600 13px Inter,sans-serif;cursor:pointer;border:1px solid var(--bd);background:#ffffff14;color:var(--fg);border-radius:10px;padding:6px 11px}button:hover{background:#ffffff30}button:disabled{opacity:.4;cursor:default}
+button.p{background:var(--ac);color:#08210f;border-color:var(--ac)}
+#msg{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:600;padding:10px 16px;max-width:min(620px,94vw);text-align:center;line-height:1.45;display:none}
+#msg small{color:#cfe0d5;display:block;margin-top:3px}
+#hand{position:fixed;bottom:0;left:0;right:0;z-index:600;display:flex;justify-content:center;gap:12px;padding:30px 12px 14px;overflow-x:auto;pointer-events:none}
+.card{pointer-events:auto;flex:0 0 auto;width:clamp(128px,14.5vw,172px);aspect-ratio:5/7;border-radius:14px;padding:4px;cursor:pointer;position:relative;
+ background:linear-gradient(135deg,var(--c),#ffffff88 45%,var(--c));background-size:250% 250%;box-shadow:0 0 18px var(--c)88,0 10px 24px #000a;
+ transform:perspective(700px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .15s,box-shadow .2s;animation:deal .8s cubic-bezier(.2,1.2,.3,1) backwards}
+.card.f{animation:deal .8s cubic-bezier(.2,1.2,.3,1) backwards,foil 5s linear infinite}
+.card:hover{transform:perspective(700px) translateY(-22px) scale(1.07) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));z-index:5}
+.card::after{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;background:radial-gradient(circle at var(--mx,50%) var(--my,0%),#fff6,transparent 55%);mix-blend-mode:overlay}
+.in{height:100%;border-radius:11px;background:#0d1a13;overflow:hidden;display:flex;flex-direction:column}
+.ph{flex:1;background:#223 center/cover}.tx{padding:6px 8px 8px;font-size:12px;line-height:1.3}
+.tx h3{margin:0;font:600 14px Fraunces,Georgia,serif}.tx i{color:#aac;display:block}.tx .ch{color:#bcd;margin-top:2px}
+.rt{display:inline-block;margin-top:4px;padding:1px 8px;border-radius:9px;background:var(--c);color:#06100a;font-weight:600;font-size:11px}
+.iu{font-style:normal;font-size:10px;padding:0 5px;border-radius:4px;color:#fff;margin-left:4px}
+.card.ok{--c:#2fd37a!important}.card.no{--c:#e5534b!important;filter:grayscale(.5) brightness(.8)}.card.sel{transform:translateY(-26px) scale(1.08)}
+.rs{position:absolute;top:8px;left:8px;right:8px;z-index:3;background:#000b;border-radius:8px;padding:4px 6px;font-size:11px;line-height:1.3}
+@keyframes deal{from{transform:translateY(130%) rotate(-12deg) scale(.5);opacity:0}}
+@keyframes foil{to{background-position:250% 250%}}
+@keyframes pl{70%{box-shadow:0 0 0 26px #ffd54a00}100%{box-shadow:0 0 0 0 #ffd54a00}}
+.pulse{background:#ffd54a;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 0 #ffd54acc;animation:pl 1.6s infinite}
+#ov{position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;
+ background:radial-gradient(circle at 30% 20%,#1f4d33,#0b140f 70%);transition:opacity .6s}
+#ov h1{font:600 clamp(40px,8vw,84px) Fraunces,Georgia,serif;margin:0;color:var(--ac);text-shadow:0 0 40px #7be0a455}#ov p{max-width:520px;color:#cfe0d5;margin:0}
+#env{position:fixed;left:50%;top:46%;width:230px;height:150px;margin:-75px 0 0 -115px;z-index:700;display:none;background:linear-gradient(#e9dcc0,#cdb98d);border-radius:8px;box-shadow:0 20px 50px #000a;perspective:600px}
+#env::before{content:"";position:absolute;inset:0;top:0;height:80px;background:#b9a374;clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top;transition:transform .5s;border-radius:8px 8px 0 0}
+#env::after{content:"🌿";position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);font-size:40px}
+#env.s{display:block;animation:shk .5s infinite}#env.o{display:block;animation:none;transform:scale(1.4);opacity:0;transition:all .5s}#env.o::before{transform:rotateX(180deg)}
+@keyframes shk{25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
+.leaflet-control-layers,.leaflet-bar a{background:var(--g)!important;color:#fff!important;border-color:var(--bd)!important}
+#fi{position:fixed;inset:0;z-index:800;display:none;align-items:center;justify-content:center;padding:14px;background:radial-gradient(circle,#0b140f99,#000e);backdrop-filter:blur(7px) brightness(.45)}
+#fi.on{display:flex;animation:fd .5s}
+@keyframes fd{from{opacity:0}}@keyframes pop{from{transform:scale(.7) translateY(40px);opacity:0}}
+.fc{width:min(900px,96vw);max-height:92vh;border-radius:24px;padding:5px;background:linear-gradient(135deg,var(--c),#ffffffaa 45%,var(--c));background-size:250% 250%;box-shadow:0 0 80px var(--c)88;animation:pop .6s cubic-bezier(.2,1.3,.3,1)}
+.fc.f{animation:pop .6s cubic-bezier(.2,1.3,.3,1),foil 5s linear infinite}
+.fin{display:grid;grid-template-columns:5fr 6fr;border-radius:20px;overflow:hidden;background:#0d1a13;max-height:calc(92vh - 10px)}
+.fl{position:relative;min-height:440px;background:#223 center/cover}.fl::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 60%,#000b)}
+.rb{position:absolute;top:14px;left:14px;z-index:2;background:var(--c);color:#06100a;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;font-size:12px}
+.fl small{position:absolute;bottom:10px;left:14px;z-index:2;color:#dde;font-size:11px}
+.fr{padding:26px 26px 22px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.kk{font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:12px}.kk.g{color:#4be38a}.kk.a{color:#ffb72b}
+.fr h2{font:600 clamp(28px,4vw,40px) Fraunces,Georgia,serif;margin:0;line-height:1.05}.fr>i{color:#a9c;font-size:16px;margin-top:-6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips span{padding:3px 10px;border-radius:12px;background:#ffffff1c;font-size:12px}
+.stt{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stt div{background:#ffffff10;border-radius:12px;padding:8px;font-size:11px;color:#bcd;text-align:center}.stt b{display:block;font:600 22px Fraunces,Georgia,serif;color:var(--fg)}
+.fr p{margin:0;line-height:1.55;color:#dfe9e2;font-size:14px}.fr>small{color:#9bb}
+.pt{font:600 34px Fraunces,Georgia,serif;color:var(--c)}.pt small{font:400 12px Inter;color:#bcd;margin-left:6px}
+.bt{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:auto}.bt a{color:#bfe;font-size:12px;text-decoration:none}
+@media(max-width:700px){#hud h1{display:none}.card{width:112px}.fin{grid-template-columns:1fr;overflow:auto}.fl{min-height:200px}}
+
+#hud{z-index:850}.ib span{margin-left:4px}
+#fi{padding-top:78px}
+#ov{overflow:auto;transition:opacity .6s,visibility .6s}#ov.h{opacity:0;visibility:hidden;pointer-events:none}
+#ov .lg{font-size:54px;filter:drop-shadow(0 0 22px #7be0a4)}#ov .sub{font-size:17px;max-width:520px}
+#modes{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+.mode{width:270px;text-align:left;padding:18px;border-radius:18px;background:#ffffff0f;border:1px solid var(--bd);transition:.25s;color:var(--fg)}
+.mode b{display:block;font:600 24px Fraunces,Georgia,serif;margin-bottom:6px}.mode span{color:#bcd;font-weight:400;font-size:13px;line-height:1.45}
+.mode.on{background:#7be0a422;border-color:var(--ac);box-shadow:0 0 34px #7be0a44d;transform:translateY(-4px)}
+#dr{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}#dr>span{color:#bcd}
+.seg.on{background:var(--ac);color:#08210f;border-color:var(--ac)}#play{font-size:20px;padding:14px 44px}
+#hand{transition:transform .5s,opacity .4s}#hand.hid{transform:translateY(120%);opacity:0;pointer-events:none}
+.card.sel{box-shadow:0 0 0 3px #fff,0 0 34px var(--c)}
+#cf{position:fixed;left:50%;transform:translateX(-50%);bottom:312px;z-index:620;display:none;font-size:15px;padding:10px 22px;box-shadow:0 8px 30px #000a}
+#mb{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:840;display:none;gap:10px;align-items:center;padding:10px 14px}
+#dlg{position:fixed;inset:0;z-index:950;display:none;align-items:center;justify-content:center;background:#000b}#dlg.on{display:flex}
+.box{padding:26px;text-align:center;max-width:400px}.box>div{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.kk.r{color:#ff6b6b}.tabs{display:flex;gap:6px}
+body.menu #hud,body.menu #hand,body.menu #cf,body.menu #mb{display:none}
+@media(max-width:700px){.ib span{display:none}#cf{bottom:232px}}
+</style></head><body class="menu">
+<div id="map"></div><canvas id="fx"></canvas>
+<div id="hud" class="gl"><button id="bk" class="ib" title="Volver al menú">←<span>Menú</span></button><div class="pips" id="pips"></div><b id="sc">0</b>
+<button id="hint" class="ib" disabled title="Pista (−30% de puntos)">💡<span>Pista</span></button><button id="gu" class="ib" disabled title="Rendirse">🏳<span>Rendirse</span></button><button id="rl" class="ib" disabled title="Cambiar de sobre">🔄<span>Relanzar <b id="rn">2</b></span></button><button class="ib mu" id="mu" title="Música">♪</button><button id="next" class="p" style="display:none">Siguiente ▶</button></div>
+<div id="msg" class="gl"></div><div id="fi"></div><div id="hand"></div><button id="cf" class="p"></button><div id="mb" class="gl"></div><div id="env"></div><div id="dlg"></div>
+<div id="ov"><div class="lg">🌿</div><h1>FloraGuessr</h1><p class="sub">Descubre qué planta vive en cada rincón del mundo.</p>
+<div id="modes"><button class="mode on" data-m="zonal"><b>🌍 Mundial</b><span>Lugares y plantas reales de cualquier parte del planeta. Cada partida es distinta.</span></button>
+<button class="mode" data-m="closed"><b>⚖️ Equilibrado</b><span>Especies bien repartidas entre todos los grandes grupos botánicos, de coníferas a orquídeas. Partidas variadas y justas.</span></button></div>
+<div id="dr"><span>Dificultad</span><button class="seg" data-v="2500">Fácil</button><button class="seg on" data-v="1200">Normal</button><button class="seg" data-v="500">Difícil</button></div>
+<button class="p" id="play">Jugar</button><button class="mu" id="mu2">♪ Música</button></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="especies.js"></script>
+<script>
+/* ===== Configuración ===== */
+const R_KM=75,MIN_REC=3,ROUNDS=5,PACK=6,TEMPO=74;
+const TIERS=[[300000,"Común",1,"#9aa7b4"],[100000,"Poco común",1.5,"#3fd17f"],[40000,"Rara",2.5,"#4b9bff"],[15000,"Épica",4,"#b967ff"],[0,"Legendaria",7,"#ffb72b"]];
+const COLORS=["#ff5470","#4be38a","#5b8cff","#ff9a3c","#c26bff","#26d7e0"];
+const IUCN={LC:"#4caf50",NT:"#9acd32",VU:"#ffb300",EN:"#fb8c00",CR:"#e53935",EW:"#8e24aa",EX:"#222"};
+const SPECIES=[["Pinus sylvestris","Conífera"],["Picea abies","Conífera"],["Sequoia sempervirens","Conífera"],["Araucaria araucana","Conífera"],["Juniperus communis","Conífera"],["Taxus baccata","Conífera"],["Pinus ponderosa","Conífera"],["Pseudotsuga menziesii","Conífera"],
+["Quercus robur","Fagal"],["Fagus sylvatica","Fagal"],["Quercus ilex","Fagal"],["Quercus rubra","Fagal"],["Betula pendula","Fagal"],["Acer saccharum","Sapindal"],["Eucalyptus globulus","Mirtal"],["Olea europaea","Olivo"],["Ceratonia siliqua","Leguminosa"],["Robinia pseudoacacia","Leguminosa"],
+["Phoenix dactylifera","Palmera"],["Chamaerops humilis","Palmera"],["Sabal palmetto","Palmera"],["Ophrys apifera","Orquídea"],["Orchis mascula","Orquídea"],["Cypripedium calceolus","Orquídea"],
+["Phragmites australis","Gramínea"],["Ammophila arenaria","Gramínea"],["Pteridium aquilinum","Helecho"],["Dryopteris filix-mas","Helecho"],["Equisetum arvense","Equiseto"],["Lycopodium clavatum","Licófito"],
+["Polytrichum commune","Musgo"],["Sphagnum palustre","Musgo"],["Marchantia polymorpha","Hepática"],["Opuntia ficus-indica","Cactus"],["Carnegiea gigantea","Cactus"],["Agave americana","Agave"],
+["Calluna vulgaris","Ericácea"],["Vaccinium myrtillus","Ericácea"],["Taraxacum officinale","Asterácea"],["Nymphaea alba","Ninfeácea"],["Drosera rotundifolia","Carnívora"],["Sarracenia purpurea","Carnívora"],["Ginkgo biloba","Ginkgo"],["Cycas revoluta","Cícada"],["Banksia serrata","Proteácea"],["Protea cynaroides","Proteácea"],["Adansonia digitata","Baobab"]];
+
+/* ===== Escalas por continente (generalizaciones de la etnomusicología; el contexto cultural real es mucho más variado) ===== */
+function scaleFor(cont,la,lo){
+ const S=(n,iv,root,dr)=>({n,iv,root,dr});
+ switch(cont){
+  case"EUROPE":return S("Europa · modo dórico (folk modal)",[0,2,3,5,7,9,10],50);
+  case"AFRICA":return S("África · pentatónica suspendida (egipcia)",[0,2,5,7,10],52);
+  case"NORTH_AMERICA":return S("Norteamérica · escala de blues",[0,3,5,6,7,10],55);
+  case"SOUTH_AMERICA":return S("Sudamérica · pentatónica andina menor",[0,3,5,7,10],57);
+  case"OCEANIA":return S("Oceanía · pentatónica mayor con bordón",[0,2,4,7,9],52,1);
+  case"ANTARCTICA":return S("Antártida · tonos enteros (hielo)",[0,2,4,6,8,10],50,1);
+  default:
+   if(lo<60)return S("Asia occidental · maqam hiyaz",[0,1,4,5,7,8,10],50,1);
+   if(lo<95&&la<38)return S("Asia meridional · raga Yaman con bordón",[0,2,4,6,7,9,11],50,1);
+   if(la<22)return S("Sudeste asiático · pelog (gamelán)",[0,1,3,7,8],52);
+   if(lo>128)return S("Asia oriental · hirajoshi (Japón)",[0,2,3,7,8],50);
+   return S("Asia oriental · pentatónica china (gong)",[0,2,4,7,9],50);
+ }}
+function contFallback(la,lo){if(la<-60)return"ANTARCTICA";if(lo<-30)return la>12?"NORTH_AMERICA":"SOUTH_AMERICA";if(lo>110&&la<-8||lo>150)return"OCEANIA";if(lo<45&&la>36)return"EUROPE";if(lo<55&&la<36&&lo>-20)return"AFRICA";return"ASIA"}
+
+/* ===== Motor de audio procedural ===== */
+const mtof=m=>440*2**((m-69)/12);
+const A={c:null,on:true,sc:scaleFor("EUROPE",0,0),root:50,i:0,t:0,md:4,
+ start(){if(this.c){this.c.resume();return}const c=this.c=new AudioContext();
+  const cp=c.createDynamicsCompressor(),m=this.m=c.createGain();m.gain.value=this.on?.55:0;m.connect(cp);cp.connect(c.destination);
+  const L=c.sampleRate*3,b=c.createBuffer(2,L,c.sampleRate);for(let h=0;h<2;h++){const d=b.getChannelData(h);for(let i=0;i<L;i++)d[i]=(Math.random()*2-1)*(1-i/L)**2.6}
+  const rv=c.createConvolver();rv.buffer=b;const w=c.createGain();w.gain.value=.7;rv.connect(w);w.connect(m);
+  const dl=c.createDelay(1);dl.delayTime.value=60/TEMPO*.75;const fb=c.createGain();fb.gain.value=.36;dl.connect(fb);fb.connect(dl);dl.connect(rv);
+  const fx=this.fx=c.createGain();fx.connect(rv);fx.connect(dl);
+  const nb=this.nb=c.createBuffer(1,c.sampleRate,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  this.t=c.currentTime+.2;setInterval(()=>this.sched(),100)},
+ nt(ty,f,t,d,g,a=.01,sd=.4,lp=0,dt=0){const c=this.c,o=c.createOscillator(),e=c.createGain();o.type=ty;o.frequency.value=f;o.detune.value=dt;let n=o;
+  if(lp){const l=c.createBiquadFilter();l.type="lowpass";l.frequency.value=lp;o.connect(l);n=l}
+  n.connect(e);e.gain.setValueAtTime(0,t);e.gain.linearRampToValueAtTime(g,t+a);e.gain.exponentialRampToValueAtTime(.0001,t+d);
+  e.connect(this.m);const s=c.createGain();s.gain.value=sd;e.connect(s);s.connect(this.fx);o.start(t);o.stop(t+d+.1)},
+ noise(t,d,g,ty,f,to){const c=this.c,s=c.createBufferSource(),fl=c.createBiquadFilter(),e=c.createGain();s.buffer=this.nb;fl.type=ty;fl.frequency.setValueAtTime(f,t);if(to)fl.frequency.exponentialRampToValueAtTime(to,t+d);
+  e.gain.setValueAtTime(g,t);e.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(fl);fl.connect(e);e.connect(this.m);if(to)e.connect(this.fx);s.start(t,Math.random()*.5);s.stop(t+d)},
+ kick(t){const o=this.c.createOscillator(),e=this.c.createGain();o.frequency.setValueAtTime(130,t);o.frequency.exponentialRampToValueAtTime(42,t+.16);
+  e.gain.setValueAtTime(.3,t);e.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(e);e.connect(this.m);o.start(t);o.stop(t+.35)},
+ sched(){const c=this.c;while(this.t<c.currentTime+.4){this.step(this.t,this.i++);this.t+=60/TEMPO/4}},
+ step(t,i){const s=i%16,bar=i>>4,sc=this.sc,iv=sc.iv,n=iv.length,r=this.root,T=t+(s%2?.03:0),bl=240/TEMPO;
+  const N=d=>r+iv[((d%n)+n)%n]+12*Math.floor(d/n);
+  if(s===0){const d=[0,3,4,2][bar%4]%n;this.deg=d;
+   [d,d+2,d+4].concat(Math.random()<.5?[d+6]:[]).forEach(k=>[-7,7].forEach(dt=>this.nt("triangle",mtof(N(k)),t,bl+1,.035,1.1,.5,900,dt)));
+   if(sc.dr){this.nt("sine",mtof(r-24),t,bl+1.5,.08,1.5,.2);this.nt("sine",mtof(r-17),t,bl+1.5,.04,1.5,.2)}}
+  if(s===0||s===10)this.nt("sine",mtof(N(this.deg)-24),T,1.2,.16,.02,.1,400);
+  if(s%8===0||(s===14&&Math.random()<.3))this.kick(T);
+  if(s%4===2)this.noise(T,.05,.04+Math.random()*.03,"highpass",7000);
+  const p=(s%4===0?.5:s%2===0?.28:.1)*((bar%8)>5?.15:1);
+  if(Math.random()<p){this.md=Math.max(2,Math.min(n*2+1,this.md+[-2,-1,-1,0,1,1,2][Math.random()*7|0]));
+   this.nt("triangle",mtof(N(this.md)+12),T,1.6,.07,.005,.7,2400);this.nt("sine",mtof(N(this.md)+24),T,.8,.02,.005,.8)}},
+ set(sc){this.sc=sc;this.root=sc.root;this.md=sc.iv.length},
+ sfx(k){const c=this.c;if(!c||!this.on)return;const t=c.currentTime+.02,iv=this.sc.iv,r=this.root+12,F=d=>mtof(r+iv[d%iv.length]+12*Math.floor(d/iv.length));
+  if(k==="open"){this.noise(t,.9,.18,"bandpass",300,3500);[0,2,4,7].forEach((d,q)=>this.nt("sine",F(d+iv.length),t+.5+q*.09,1.8,.08,.01,.9))}
+  if(k==="pick")this.nt("triangle",F(2),t,.25,.12,.005,.5);
+  if(k==="ok")[0,2,4,6].forEach((d,q)=>this.nt("triangle",F(d+iv.length),t+q*.1,1.3,.1,.01,.9));
+  if(k==="no")[0,1].forEach(q=>this.nt("sine",mtof(r-12-q*3),t+q*.2,1,.16,.02,.3,500));
+  if(k==="tick")this.noise(t,.05,.05,"highpass",4000)},
+ mute(){this.on=!this.on;if(this.c)this.m.gain.setTargetAtTime(this.on?.55:0,this.c.currentTime,.15);document.querySelectorAll(".mu").forEach(b=>b.style.opacity=this.on?1:.4)}};
+
+/* ===== Utilidades ===== */
+const $=s=>document.querySelector(s),enc=encodeURIComponent,cache={};
+const j=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json()};
+const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const k=Math.random()*(i+1)|0;[a[i],a[k]]=[a[k],a[i]]}return a};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const G="https://api.gbif.org/v1/",IN="https://api.inaturalist.org/v1/";
+const F="&hasCoordinate=true&hasGeospatialIssue=false&occurrenceStatus=PRESENT&basisOfRecord=HUMAN_OBSERVATION&basisOfRecord=PRESERVED_SPECIMEN";
+const wkt=([la,lo])=>{const p=[];for(let i=0;i<=24;i++){const a=2*Math.PI*(i%24)/24;p.push((lo+R_KM/(111.32*Math.cos(la*Math.PI/180))*Math.cos(a)).toFixed(4)+" "+(la+R_KM/111.32*Math.sin(a)).toFixed(4))}return`POLYGON((${p.join(",")}))`};
+const k=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?Math.round(n/1e3)+"k":n;
+const msg=h=>{const m=$("#msg");m.innerHTML=h;m.style.display=h?"block":"none"};
+
+/* ===== Datos: iNaturalist (foto, nombre, IUCN), Wikipedia (rareza), GBIF (taxón) ===== */
+async function getCard([sci,grp,e]){
+ if(cache[sci])return cache[sci];
+ if(e){const [s,m]=await Promise.all([j("https://en.wikipedia.org/api/rest_v1/page/summary/"+enc(e.w)).catch(()=>({})),j(G+"species/match?kingdom=Plantae&name="+enc(sci))]);
+  if(!m.usageKey)throw 0;const tier=TIERS.find(t=>e.v>=t[0])||TIERS[0];
+  return cache[sci]={sci,grp,key:m.usageKey,tid:e.t,name:e.n||sci,img:e.i,views:e.v,obs:e.o,cs:e.c,tier,ti:TIERS.indexOf(tier),fact:s.extract,wiki:s.content_urls&&s.content_urls.desktop&&s.content_urls.desktop.page}}
+ const [t,s,m]=await Promise.all([j(`${IN}taxa?q=${enc(sci)}&rank=species&is_active=true&per_page=1&locale=es`),
+  j("https://en.wikipedia.org/api/rest_v1/page/summary/"+enc(sci.replace(/ /g,"_"))),j(G+"species/match?kingdom=Plantae&name="+enc(sci))]);
+ const x=t.results[0];if(!x||!m.usageKey)throw 0;
+ const title=(s.titles&&s.titles.canonical)||sci.replace(/ /g,"_"),d=new Date(),f=n=>String(n).padStart(2,"0"),
+  a=`${d.getFullYear()-1}${f(d.getMonth()+1)}0100`,b=`${d.getFullYear()}${f(d.getMonth()+1)}0100`;
+ let v=null;try{v=(await j(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${enc(title)}/monthly/${a}/${b}`)).items.reduce((q,i)=>q+i.views,0)}catch(e){}
+ const tier=v==null?TIERS[0]:TIERS.find(t=>v>=t[0]);
+ return cache[sci]={sci,grp,key:m.usageKey,tid:x.id,name:x.preferred_common_name||sci,img:x.default_photo&&x.default_photo.medium_url,
+  views:v,obs:x.observations_count,cs:x.conservation_status&&String(x.conservation_status.status).toUpperCase(),tier,ti:TIERS.indexOf(tier),fact:s.extract,wiki:s.content_urls&&s.content_urls.desktop&&s.content_urls.desktop.page};
+}
+async function openPack(){const pool=sh(POOL),pack=[];
+ while(pack.length<PACK&&pool.length){(await Promise.allSettled(pool.splice(0,PACK-pack.length+2).map(getCard))).forEach(r=>{if(r.status==="fulfilled"&&pack.length<PACK)pack.push(r.value)})}
+ return pack}
+async function randomLoc(c){
+ const u=`${G}occurrence/search?taxonKey=${c.key}${F}`,n=(await j(u+"&limit=0")).count;if(n<MIN_REC)return null;
+ for(let i=0;i<6;i++){const r=(await j(u+`&limit=1&offset=${Math.random()*Math.min(n,50000)|0}`)).results[0];
+  if(r&&Math.abs(r.decimalLongitude)<175&&Math.abs(r.decimalLatitude)<80&&(r.coordinateUncertaintyInMeters||0)<20000)
+   return{p:[r.decimalLatitude,r.decimalLongitude],cont:r.continent||contFallback(r.decimalLatitude,r.decimalLongitude),country:r.country}}
+ return null}
+/* Comprobación: GBIF (registros fiables) + iNaturalist (grado investigación, no cultivadas) + filtro "nativa" de iNaturalist */
+async function probe(c,loc){const[la,lo]=loc.p,q=`${IN}observations?taxon_id=${c.tid}&lat=${la}&lng=${lo}&radius=${R_KM}&quality_grade=research&captive=false`;
+ const[g,i,n]=await Promise.all([j(`${G}occurrence/search?taxonKey=${c.key}${F}&limit=40&geometry=${enc(wkt(loc.p))}`).catch(()=>({count:0,results:[]})),
+  j(q+"&per_page=1&photos=true").catch(()=>({total_results:0,results:[]})),j(q+"&native=true&per_page=0").catch(()=>({total_results:0}))]);
+ const o=i.results[0],ph=o&&o.photos&&o.photos[0]&&o.photos[0].url;
+ return{g:g.count,i:i.total_results,native:n.total_results>0,ok:g.count>=MIN_REC||i.total_results>=MIN_REC,pts:g.results.map(x=>[x.decimalLatitude,x.decimalLongitude]),photo:ph&&ph.replace("square","medium")}}
+
+/* ===== Mapa ===== */
+const map=L.map("map",{worldCopyJump:true,minZoom:2,zoomControl:true}).setView([20,0],2);
+const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:17,attribution:"Imagery © Esri"}).addTo(map);
+const esri=u=>L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/"+u+"/MapServer/tile/{z}/{y}/{x}",{maxZoom:17,attribution:"© Esri"});
+const calle=esri("World_Street_Map"),topo=esri("World_Topo_Map");
+L.control.layers({"Satélite":sat,"Calles (Esri)":calle,"Topográfico":topo}).addTo(map);const lg=L.layerGroup().addTo(map);
+
+/* ===== Partículas ===== */
+const cv=$("#fx"),cx=cv.getContext("2d"),P=[];const rs=()=>{cv.width=innerWidth;cv.height=innerHeight};rs();onresize=rs;
+for(let i=0;i<50;i++)P.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:1+Math.random()*2.4,v:.15+Math.random()*.5,a:Math.random()*6});
+(function f(){cx.clearRect(0,0,cv.width,cv.height);P.forEach(p=>{p.y-=p.v;p.x+=Math.sin(p.a+=.01)*.4;if(p.y<-5){p.y=cv.height+5;p.x=Math.random()*cv.width}cx.fillStyle="rgba(255,244,190,.35)";cx.beginPath();cx.arc(p.x,p.y,p.r,0,7);cx.fill()});requestAnimationFrame(f)})();
+
+/* ===== Juego ===== */
+let S;
+function render(res){
+ $("#hand").innerHTML=S.pack.map((c,i)=>{const r=res&&res[i];
+  const cls=(c.ti>=3?"f ":"")+(i===S.sel?"sel":"");
+  return`<div class="card ${cls}" data-i="${i}" style="--c:${c.tier[3]};animation-delay:${i*.1}s"><div class="in">
+  ${r?`<div class="rs"><span style="color:${COLORS[i]}">●</span> ${r.ok?"✔":"✘"} GBIF ${r.g} · iNat ${r.i}<br>${r.ok?(r.native?"🌱 nativa (iNat)":"⚠ no confirmada como nativa"):"ausente"}</div>`:""}
+  <div class="ph" style="background-image:url('${(r&&r.photo)||c.img||""}')"></div>
+  <div class="tx"><h3>${c.name}</h3><i>${c.sci}</i><div class="ch">${c.grp}${c.cs?`<em class="iu" style="background:${IUCN[c.cs]||"#777"}">${c.cs}</em>`:""}</div>
+  <span class="rt">${c.tier[1]} ×${c.tier[2]}</span> <span style="color:#9ab">${c.views!=null?"👁"+k(c.views):""} 🔭${k(c.obs||0)}</span></div></div></div>`}).join("");
+}
+const pips=()=>$("#pips").innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="pip ${i<S.round?"on":""}"></span>`).join("");
+/* ===== Modo zonal: sin listas. Sale un punto real; las válidas son las plantas locales de iNaturalist y los señuelos son plantas de la región amplia que NO tienen registros en el radio local ===== */
+const SCN=`${IN}observations/species_counts?iconic_taxa=Plantae&quality_grade=research&captive=false&locale=es`;
+const near=(la,lo,r,x="")=>j(`${SCN}&lat=${la}&lng=${lo}&radius=${r}&per_page=200${x}`).then(r=>r.results.filter(x=>x.taxon&&x.taxon.rank==="species"));
+const usable=x=>x.taxon.default_photo&&x.taxon.wikipedia_url;
+async function cardFromTaxon(x){
+ const key="t"+x.id;if(cache[key])return cache[key];
+ const t0=decodeURIComponent(x.wikipedia_url.split("/wiki/")[1]||"").split("#")[0];if(!t0)throw 0;
+ const [s,m]=await Promise.all([j("https://en.wikipedia.org/api/rest_v1/page/summary/"+enc(t0)).catch(()=>({})),j(G+"species/match?kingdom=Plantae&name="+enc(x.name))]);
+ if(!m.usageKey)throw 0;
+ const w=(s.titles&&s.titles.canonical)||t0,d=new Date(),f=n=>String(n).padStart(2,"0"),a=`${d.getFullYear()-1}${f(d.getMonth()+1)}0100`,b=`${d.getFullYear()}${f(d.getMonth()+1)}0100`;
+ let v=null;try{v=(await j(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${enc(w)}/monthly/${a}/${b}`)).items.reduce((q,i)=>q+i.views,0)}catch(e){}
+ const tier=v==null?TIERS[0]:TIERS.find(t=>v>=t[0]);
+ return cache[key]={sci:x.name,grp:"Planta",key:m.usageKey,tid:x.id,name:x.preferred_common_name||x.name,img:x.default_photo.medium_url,views:v,obs:x.observations_count,
+  cs:x.conservation_status&&String(x.conservation_status.status).toUpperCase(),tier,ti:TIERS.indexOf(tier),fact:s.extract,wiki:s.content_urls&&s.content_urls.desktop&&s.content_urls.desktop.page}}
+async function zonalRound(){
+ const W=DIFV;
+ for(let a=0;a<8;a++){
+  try{let la,lo;
+   if(a<4){const r=(await j(`${IN}observations?iconic_taxa=Plantae&quality_grade=research&captive=false&order_by=random&per_page=1&acc_below=2000`)).results[0];
+    if(!r||!r.location||r.obscured)continue;[la,lo]=r.location.split(",").map(Number)}
+   else{la=Math.random()*120-50;lo=Math.random()*340-170}
+   if(Math.abs(la)>78||Math.abs(lo)>172)continue;
+   const L=await near(la,lo,R_KM);if(L.filter(usable).length<4)continue;
+   let N=await near(la,lo,R_KM,"&native=true").catch(()=>[]);N=N.filter(usable);if(!N.length)N=L.filter(usable);
+   const loc=new Set(L.map(x=>x.taxon.id)),good=sh(N).slice(0,2);
+   const wd=(await near(la,lo,W,`&page=${1+Math.random()*4|0}`)).filter(usable).filter(x=>!loc.has(x.taxon.id));
+   const cand=sh(wd).slice(0,16);if(cand.length<4)continue;
+   const here=await near(la,lo,R_KM,`&taxon_id=${cand.map(x=>x.taxon.id).join(",")}`),hs=new Set(here.map(x=>x.taxon.id));   // una sola llamada verifica todos los señuelos
+   const dec=cand.filter(x=>!hs.has(x.taxon.id)).slice(0,PACK-good.length);if(dec.length<3)continue;
+   const rs=await Promise.allSettled([...good,...dec].map(x=>cardFromTaxon(x.taxon)));
+   const cards=rs.map((r,i)=>r.status==="fulfilled"?[r.value,i<good.length]:null).filter(Boolean),gc=cards.filter(c=>c[1]);
+   if(cards.length<5||!gc.length)continue;
+   S.pack=sh(cards.map(c=>c[0]));S.hidden=gc[0][0];
+   const g=await j(`${G}occurrence/search?taxonKey=6&limit=1&geometry=${enc(wkt([la,lo]))}`).catch(()=>({results:[]})),o=g.results[0]||{};
+   S.loc={p:[la,lo],cont:o.continent||contFallback(la,lo),country:o.country};return}
+  catch(e){}}
+ throw 0}
+async function newRound(){
+ const S0=S;
+ closeF();S.rid=(S.rid||0)+1;$("#next").style.display="none";$("#hint").disabled=$("#gu").disabled=$("#rl").disabled=true;lg.clearLayers();$("#hand").innerHTML="";S.hint=false;S.pick=null;S.sel=null;$("#cf").style.display="none";$("#hand").classList.remove("hid");pips();
+ msg("Abriendo sobre…");const ev=$("#env");ev.className="s";
+ try{if(POOL==="zonal")await zonalRound();else{S.pack=await openPack();S.loc=null;
+  for(const c of sh(S.pack)){S.hidden=c;S.loc=await randomLoc(c);if(S.loc)break}}
+  if(!S.loc)throw 0}catch(e){ev.className="";if(S===S0)msg(`Error de red/API. <button onclick="newRound()">Reintentar</button>`);return}
+ if(S!==S0)return;
+ A.set(scaleFor(S.loc.cont,...S.loc.p));A.sfx("open");ev.className="o";await sleep(550);ev.className="";
+ const ci=L.circle(S.loc.p,{radius:R_KM*1000,color:"#ffd54a",weight:2,dashArray:"6 8",fillOpacity:.06}).addTo(lg);
+ map.fitBounds(ci.getBounds(),{paddingTopLeft:[0,90],paddingBottomRight:[0,290]});
+ L.marker(S.loc.p,{icon:L.divIcon({className:"pulse",iconSize:[18,18]})}).addTo(lg);
+ S.answered=false;$("#hint").disabled=$("#gu").disabled=false;$("#rl").disabled=S.rl<1;render();
+ msg(`¿Qué planta vive a ≤${R_KM} km del marcador?<small>Elige una carta y confírmala · puede haber más de una válida · ♪ la música cambia con el continente</small>`);
+}
+async function reveal(i,gu){
+ if(S.answered)return;const S0=S,rid=S.rid;S.answered=true;S.pick=i;$("#cf").style.display="none";
+ $("#hint").disabled=$("#gu").disabled=$("#rl").disabled=true;A.sfx(gu?"tick":"pick");msg("Comprobando registros…");
+ const res=await Promise.all(S.pack.map(c=>probe(c,S.loc).catch(()=>({g:0,i:0,ok:false,pts:[]}))));
+ if(S!==S0||rid!==S.rid)return;
+ $("#hand").classList.add("hid");msg("");
+ const h=S.pack.indexOf(S.hidden),x=gu?h:i,c=S.pack[x],r=res[x],ok=!gu&&r.ok,t=c.tier,pts=ok?Math.round(100*t[2]*(r.native?1.25:1)*(S.hint?.7:1)):0;
+ res.forEach((q,k)=>{if(q.ok||k===x)q.pts.forEach(p=>L.circleMarker(p,{radius:5,color:"#fff",weight:1,fillColor:q.ok?"#4be38a":"#ff5470",fillOpacity:.95}).addTo(lg))});
+ S.score+=pts;$("#sc").textContent=S.score;A.sfx(ok?"ok":"no");
+ const f=S.f={gu,cur:0,t:[],valid:S.pack.filter((_,k)=>res[k].ok).map(y=>y.name),sum:`${gu?"🏳 Te rendiste":ok?"✔ Correcto":"✘ Fallaste"} · +${pts} pts`};
+ if(!gu)f.t.push({kind:"mine",c,r,ok,pts,calc:`base 100 × rareza ${t[2]}${r.native?" × nativa 1.25":""}${S.hint?" × pista 0.7":""}`});
+ if(gu||!ok)f.t.push({kind:"ans",c:S.pack[h],r:res[h]});
+ $("#next").style.display="";$("#next").textContent=S.round>=ROUNDS?"Resultado":"Siguiente ▶";
+ await sleep(700);if(S===S0&&rid===S.rid)fiche(0);
+}
+function closeF(){$("#fi").className="";$("#fi").innerHTML="";$("#mb").style.display="none";A.duck(false)}
+function nxt(){closeF();$("#next").click()}
+function minF(){const f=S.f;$("#fi").className="";A.duck(false);$("#mb").innerHTML=`<span>${f.sum}</span><button onclick="fiche(${f.cur})">Ver ficha</button><button class="p" onclick="nxt()">${S.round>=ROUNDS?"Ver resultado":"Siguiente ▶"}</button>`;$("#mb").style.display="flex"}
+function fiche(i){const f=S.f,T=f.t[i];f.cur=i;const c=T.c,r=T.r||{},t=c.tier,ph=r.photo||c.img||"";$("#mb").style.display="none";
+ const kk=T.kind==="mine"?(T.ok?["g","✔ ¡Correcto!"]:["r","✘ No vive en esta zona"]):(f.gu?["a","🏳 La respuesta era"]:["g","✔ Una respuesta válida"]);
+ const oth=T.kind==="ans"?f.valid.filter(n=>n!==c.name):[];
+ const tabs=f.t.length>1?`<div class="tabs">${f.t.map((x,q)=>`<button class="${q===i?"p":""}" onclick="fiche(${q})">${x.kind==="mine"?"Tu elección":"Respuesta"}</button>`).join("")}</div>`:"";
+ $("#fi").innerHTML=`<div class="fc ${c.ti>=3?"f":""}" style="--c:${t[3]}"><div class="fin">
+ <div class="fl" style="background-image:url('${ph}')"><span class="rb">★ ${t[1]}</span><small>${r.photo?"Observación local · iNaturalist":"iNaturalist"}</small></div>
+ <div class="fr">${tabs}<div class="kk ${kk[0]}">${kk[1]}</div><h2>${c.name}</h2><i>${c.sci}</i>
+ <div class="chips"><span>${c.grp}</span>${c.cs?`<span style="background:${IUCN[c.cs]||"#777"}">IUCN ${c.cs}</span>`:""}<span>${r.ok?(r.native?"🌱 Nativa":"⚠ Origen no confirmado"):"Sin registros fiables aquí"}</span></div>
+ <div class="stt"><div><b>${c.views!=null?k(c.views):"—"}</b>visitas Wikipedia/año</div><div><b>${k(c.obs||0)}</b>observaciones iNat</div><div><b>${(r.g||0)+(r.i||0)}</b>registros a ${R_KM} km</div></div>
+ <p>${c.fact||""}</p>${oth.length?`<small>También válidas aquí: ${oth.join(", ")}.</small>`:""}
+ ${T.kind==="mine"?`<div class="pt">${T.ok?`+${T.pts} pts <small>${T.calc}</small>`:"0 pts"}</div>`:""}
+ <div class="bt"><button class="p" onclick="nxt()">${S.round>=ROUNDS?"Ver resultado":"Siguiente ▶"}</button><button onclick="minF()">Ver mapa</button>
+ ${c.wiki?`<a href="${c.wiki}" target="_blank" rel="noopener">Wikipedia ↗</a>`:""}<a href="https://www.inaturalist.org/taxa/${c.tid}" target="_blank" rel="noopener">iNaturalist ↗</a></div></div></div></div>`;
+ $("#fi").className="on";A.duck(true)}
+A.duck=function(b){if(this.c&&this.on)this.m.gain.setTargetAtTime(b?.22:.55,this.c.currentTime,.3)};
+$("#gu").onclick=()=>{if(!S.answered)reveal(-1,true)};
+$("#rl").onclick=()=>{if(S.answered||S.rl<1)return;S.rl--;$("#rn").textContent=S.rl;A.sfx("tick");newRound()};
+$("#hand").onclick=e=>{const b=e.target.closest(".card");if(!b||S.answered)return;const i=+b.dataset.i;
+ if(S.sel===i){reveal(i);return}S.sel=i;A.sfx("tick");
+ document.querySelectorAll("#hand .card").forEach(x=>x.classList.toggle("sel",+x.dataset.i===i));
+ $("#cf").innerHTML=`✔ Elegir <b>${S.pack[i].name}</b>`;$("#cf").style.display="block"};
+$("#cf").onclick=()=>{if(S.sel!=null)reveal(S.sel)};
+$("#hand").onpointermove=e=>{const b=e.target.closest(".card");if(!b)return;const r=b.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+ b.style.setProperty("--rx",(.5-y)*18+"deg");b.style.setProperty("--ry",(x-.5)*18+"deg");b.style.setProperty("--mx",x*100+"%");b.style.setProperty("--my",y*100+"%")};
+$("#hint").onclick=async()=>{S.hint=true;$("#hint").disabled=true;A.sfx("tick");
+ try{const r=await j(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${S.loc.p[0]}|${S.loc.p[1]}&gsradius=10000&gslimit=4&format=json&origin=*`);
+  $("#msg").insertAdjacentHTML("beforeend",`<small>💡 Wikipedia cerca: <b>${r.query.geosearch.map(x=>x.title).join(", ")||"nada"}</b></small>`)}catch(e){}};
+$("#next").onclick=()=>{A.sfx("tick");if(S.round>=ROUNDS){endGame();return}S.round++;newRound()};
+function endGame(){closeF();lg.clearLayers();$("#hand").innerHTML="";$("#cf").style.display="none";$("#next").style.display="none";S.over=true;
+ $("#fi").innerHTML=`<div class="gl box" style="padding:32px"><div class="kk g">Partida terminada</div><div style="font:600 70px Fraunces,Georgia,serif;color:var(--ac)">${S.score}</div><p style="margin:0;color:#cfe0d5">puntos en ${ROUNDS} rondas</p>
+ <div><button class="p" onclick="again()">Jugar de nuevo</button><button onclick="menu()">Menú</button></div></div>`;$("#fi").className="on"}
+function again(){closeF();newGame()}
+function newGame(){S={round:1,score:0,rl:2};$("#sc").textContent=0;$("#rn").textContent=2;newRound()}
+function menu(){S={idle:1,round:0,rl:0};closeF();lg.clearLayers();$("#hand").innerHTML="";$("#cf").style.display="none";msg("");$("#env").className="";$("#next").style.display="none";
+ document.body.classList.add("menu");$("#ov").classList.remove("h");map.setView([20,0],2)}
+function ask(t,ok){const d=$("#dlg");d.innerHTML=`<div class="gl box"><p>${t}</p><div><button id="dn">Seguir jugando</button><button class="p" id="dy">Salir al menú</button></div></div>`;d.className="on";
+ $("#dn").onclick=()=>d.className="";$("#dy").onclick=()=>{d.className="";ok()}}
+let POOL="zonal",MODE="zonal",DIFV=1200;
+const DBL=()=>window.SPECIES_DB&&SPECIES_DB.length?SPECIES_DB:SPECIES;
+document.querySelectorAll(".mode").forEach(b=>b.onclick=()=>{MODE=b.dataset.m;document.querySelectorAll(".mode").forEach(x=>x.classList.toggle("on",x===b));$("#dr").style.display=MODE==="zonal"?"flex":"none"});
+document.querySelectorAll(".seg").forEach(b=>b.onclick=()=>{DIFV=+b.dataset.v;document.querySelectorAll(".seg").forEach(x=>x.classList.toggle("on",x===b))});
+$("#play").onclick=()=>{POOL=MODE==="zonal"?"zonal":DBL();A.start();$("#ov").classList.add("h");document.body.classList.remove("menu");newGame()};
+$("#bk").onclick=()=>S&&!S.idle&&!S.over?ask("¿Volver al menú? Se perderá la partida en curso.",menu):menu();
+document.querySelectorAll(".mu").forEach(b=>b.onclick=()=>A.mute());
+S={idle:1,round:0,rl:0};
+</script></body></html>
