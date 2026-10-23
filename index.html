@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FloraGuessr</title>
+<meta name="description" content="Juego de botánica: elige qué planta vive cerca de un punto real del mapa.">
+<meta name="theme-color" content="#e6e3d6">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='3' fill='%23f6f4ec'/%3E%3Cpath d='M16 28V6M16 10l-6-3M16 15l7-4M16 20l-7-3' stroke='%231d2520' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="app" data-phase="menu">
+  <div id="map" role="region" aria-label="Mapa de la ronda"></div>
+
+  <header id="hud" aria-label="Partida">
+    <button id="btn-menu" class="tool" type="button"></button>
+    <div class="hud-progress">
+      <span id="hud-round" class="hud-round"></span>
+      <ol id="hud-marks" class="hud-marks" aria-hidden="true"></ol>
+    </div>
+    <output id="hud-score" class="hud-score" aria-live="off"></output>
+    <div class="hud-tools">
+      <button id="btn-hint" class="tool" type="button"></button>
+      <button id="btn-surrender" class="tool" type="button"></button>
+      <button id="btn-reroll" class="tool" type="button"></button>
+      <button id="btn-layer" class="tool" type="button" hidden></button>
+      <button id="btn-music" class="tool" type="button"></button>
+    </div>
+  </header>
+
+  <div id="slip" class="slip" role="status" aria-live="polite"></div>
+
+  <div id="loader" class="loader" hidden>
+    <div class="packet" aria-hidden="true">
+      <div class="packet-flap"></div>
+      <div class="packet-label">
+        <span class="packet-kicker">Sobre de muestras</span>
+        <span id="packet-no" class="packet-no"></span>
+        <span class="packet-rule"></span>
+        <span class="packet-rule"></span>
+      </div>
+    </div>
+  </div>
+
+  <section id="hand" class="hand" aria-label="Tus fichas">
+    <ol id="hand-cards" class="hand-cards"></ol>
+    <button id="btn-confirm" class="btn btn-primary confirm" type="button" hidden></button>
+  </section>
+
+  <div id="sheetbar" class="sheetbar" hidden></div>
+
+  <section id="menu" class="menu" aria-labelledby="menu-title"></section>
+  <section id="end" class="end" aria-labelledby="end-title" hidden></section>
+  <section id="error" class="error" role="alert" hidden></section>
+
+  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title"></dialog>
+  <dialog id="exit" class="note-dialog" aria-labelledby="exit-title"></dialog>
+  <dialog id="credits" class="note-dialog" aria-labelledby="credits-title"></dialog>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "name": "floraguessr",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Juego web de botánica: adivina qué planta vive cerca de un punto real del mapa.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:demo": "tsc --noEmit && vite build --mode demo --outDir dist-demo && node scripts/artifact-page.mjs dist-demo",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "species": "node scripts/build-species.mjs",
+    "verify-apis": "node scripts/verify-apis.mjs"
+  },
+  "dependencies": {
+    "@fontsource/alegreya": "^5.3.0",
+    "@fontsource/courier-prime": "^5.3.0",
+    "@fontsource/im-fell-english": "^5.3.0",
+    "leaflet": "^1.9.4",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^26.6.5",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
+    "fake-indexeddb": "^6.2.6",
+    "jsdom": "^29.1.1",
+    "typescript": "5.9",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
