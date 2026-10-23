@@ -1,0 +1,41 @@
+/*
+ * Cuaderno de campo y herbario: cartulina de herbario de fondo, pliegos blancos encima, tinta
+ * ferrogálica, sellos en azul de archivo y la etiqueta roja de los ejemplares tipo.
+ * Un solo aspecto (claro) a propósito: es papel.
+ */
+:root {
+  color-scheme: light;
+
+  --board: #e6e3d6;      /* cartulina del herbario, fondo */
+  --sheet: #f7f5ee;      /* pliego de montaje */
+  --ink: #1d2520;        /* tinta ferrogálica */
+  --ink-2: #4a544d;      /* tinta aguada: textos secundarios (AA sobre ambos papeles) */
+  --rule: #b8b5a5;       /* pautado y filetes, decorativo */
+  --red: #9a2a22;        /* etiqueta de tipo, errores, chincheta */
+  --red-deep: #6e1c16;
+  --blue: #27457a;       /* tinta de sello de archivo, foco e interacción */
+  --moss: #3f5e2e;       /* «vive aquí» */
+  --kraft: #c4ae83;      /* sobre de semillas */
+  --tape: #ddd3ad;       /* cinta engomada */
+  --sea: #cfd7d2;        /* mar del mapa-lámina */
+  --land: #ece8da;       /* tierra del mapa-lámina */
+
+  --f-display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --f-body: "Alegreya", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --f-label: "Courier Prime", "Courier New", Courier, monospace;
+
+  /* Escala tipográfica 1.25 */
+  --t-xs: 0.75rem;
+  --t-sm: 0.875rem;
+  --t-md: 1rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.563rem;
+  --t-2xl: 1.953rem;
+  --t-3xl: 2.441rem;
+  --t-hero: clamp(3rem, 8vw, 5.6rem);
+
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  --shadow-paper: 0 1px 0 var(--rule), 0 10px 18px -12px rgb(29 37 32 / 0.45);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
