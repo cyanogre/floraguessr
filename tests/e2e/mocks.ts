@@ -100,6 +100,18 @@ export async function mockApis(page: Page, opts: { inatStatus?: number; first429
     const req = route.request();
     log.wikimedia.push({ url: req.url(), apiUserAgent: req.headers()['api-user-agent'] });
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'api-user-agent' } });
+    if (req.url().includes('/w/api.php') && req.url().includes('prop=pageviews')) {
+      const titles = (new URL(req.url()).searchParams.get('titles') ?? '').split('|');
+      return json(route, {
+        query: {
+          normalized: titles.map((t) => ({ from: t, to: t.replace(/_/g, ' ') })),
+          pages: titles.map((t) => {
+            const id = Number(t.match(/specimen(\d+)/)?.[1] ?? 1);
+            return { title: t.replace(/_/g, ' '), pageviews: { '2026-10-01': id * 10, '2026-10-02': id * 10 } };
+          }),
+        },
+      });
+    }
     if (req.url().includes('/pageviews/')) {
       const id = Number(req.url().match(/specimen(\d+)/)?.[1] ?? 1);
       return json(route, { items: Array.from({ length: 12 }, () => ({ views: id * 400 })) });

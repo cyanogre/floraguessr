@@ -67,7 +67,7 @@ export async function getJson<T>(url: string, opts: FetchOptions): Promise<T> {
         opts.signal,
       );
     } catch (e) {
-      if (isAbort(e) || attempt >= retries) throw e;
+      if (isAbort(e) || attempt >= Math.min(retries, 1)) throw e;
       await sleep(backoffMs(attempt, null), opts.signal);
       continue;
     }

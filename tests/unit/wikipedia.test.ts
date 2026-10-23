@@ -22,3 +22,31 @@ describe('iNaturalist helpers', () => {
     expect(photoFrom(null)).toBeNull();
   });
 });
+
+import { parsePageviews } from '../../src/api/wikipedia';
+
+describe('parsePageviews', () => {
+  it('pasa la media diaria a visitas anuales y sigue redirecciones', () => {
+    const r = parsePageviews(['Jack_pine', 'Quercus_robur', 'No_existe', 'Sin_datos'], {
+      query: {
+        normalized: [
+          { from: 'Jack_pine', to: 'Jack pine' },
+          { from: 'Quercus_robur', to: 'Quercus robur' },
+          { from: 'No_existe', to: 'No existe' },
+          { from: 'Sin_datos', to: 'Sin datos' },
+        ],
+        redirects: [{ from: 'Jack pine', to: 'Pinus banksiana' }],
+        pages: [
+          { title: 'Pinus banksiana', pageviews: { '2026-10-01': 100, '2026-10-02': 300, '2026-10-03': null } },
+          { title: 'Quercus robur', pageviews: { '2026-10-01': 10 } },
+          { title: 'No existe', missing: true },
+          { title: 'Sin datos', pageviews: { '2026-10-01': null } },
+        ],
+      },
+    });
+    expect(r.get('Jack_pine')).toBe(200 * 365);
+    expect(r.get('Quercus_robur')).toBe(3650);
+    expect(r.get('No_existe')).toBeNull();
+    expect(r.get('Sin_datos')).toBeNull();
+  });
+});

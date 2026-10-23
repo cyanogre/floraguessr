@@ -115,7 +115,7 @@ export const es = {
     ['Observaciones y fotos', 'iNaturalist y su comunidad. Cada foto conserva su autoría y licencia, indicadas en la ficha.'],
     ['Registros de colecciones', 'GBIF.org, red mundial de datos de biodiversidad.'],
     ['Rareza y descripciones', 'Wikipedia: visitas anuales al artículo en inglés y resumen del artículo (CC BY-SA 4.0).'],
-    ['Mapa', 'Leaflet. Costas de Natural Earth (dominio público). Imágenes de satélite de Esri y sus proveedores.'],
+    ['Mapa', 'Leaflet (licencia BSD). Costas de Natural Earth (dominio público). Imágenes de satélite: Esri, Vantor, Earthstar Geographics y la comunidad de usuarios GIS.'],
     ['Tipografías', 'IM Fell English (Igino Marini), Alegreya (Huerta Tipográfica) y Courier Prime (Quote-Unquote Apps), con licencia OFL.'],
   ] as [string, string][],
   close: 'Cerrar',

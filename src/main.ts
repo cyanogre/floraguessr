@@ -9,5 +9,10 @@ import './styles/tokens.css';
 import './styles/app.css';
 import { App } from './ui/app';
 
-const demo = import.meta.env.MODE === 'demo' || new URLSearchParams(location.search).has('muestra');
-new App({ demo }).mount();
+const params = new URLSearchParams(location.search);
+if (params.has('diagnostico')) {
+  void import('./diagnostico').then((m) => m.runDiagnostics());
+} else {
+  const demo = import.meta.env.MODE === 'demo' || params.has('muestra');
+  new App({ demo }).mount();
+}
